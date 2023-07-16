@@ -1,6 +1,6 @@
-name: Start Ngrok Tunnel
+name: Start Ngrok Tunnel  
 
-on: 
+on:
   workflow_dispatch:
 
 jobs:
@@ -10,10 +10,13 @@ jobs:
     runs-on: windows-latest
 
     steps:
-
+    
     - uses: actions/checkout@v2
 
-    - name: Download Ngrok  
+    - name: Set Credentials  
+      run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+
+    - name: Download Ngrok
       run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
 
     - name: Extract Ngrok
@@ -21,7 +24,7 @@ jobs:
 
     - name: Authenticate Ngrok
       env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}  
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
 
     - name: Enable RDP
@@ -29,10 +32,18 @@ jobs:
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-    - name: Start Tunnel
-      run: .\ngrok\ngrok.exe tcp 3389
+    - name: Validate ngrok  
+      run: .\ngrok\ngrok -version
 
-    - name: Keep Tunnel Alive
+    - name: Check RDP Port
+      run: Test-Connection localhost -Port 3389
+
+    - name: Start Tunnel
+      run: | 
+        .\ngrok\ngrok tcp 3389 --log=stdout
+        .\ngrok\ngrok tcp 3389 --log=stdout
+
+    - name: Keep Tunnel Alive  
       run: |
-        nohup .\ngrok\ngrok.exe tcp 3389 &
-        sleep 86400
+       nohup .\ngrok\ngrok tcp 3389 &
+       sleep 86400
