@@ -2,7 +2,7 @@ name: Start Ngrok Tunnel
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Restart every 30 mins  
+    - cron: '*/30 * * * *'
 
 jobs:
 
@@ -11,7 +11,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    
+
     - uses: actions/checkout@v2
 
     - name: Download Ngrok
@@ -22,14 +22,16 @@ jobs:
 
     - name: Authenticate Ngrok
       env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}  
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
 
-    - name: Enable RDP 
-      # Commands to enable remote desktop
+    - name: Enable RDP
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop" 
 
     - name: Start Tunnel
       run: .\ngrok\ngrok.exe tcp 3389
 
-    - name: Keep Alive  
-      run: sleep 600 # Sleep 10 minutes
+    - name: Keep Alive
+      run: sleep 600
