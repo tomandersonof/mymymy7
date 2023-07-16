@@ -1,6 +1,6 @@
-name: Start Ngrok Tunnel  
+name: Start Ngrok Tunnel
 
-on:
+on: 
   workflow_dispatch:
 
 jobs:
@@ -24,7 +24,7 @@ jobs:
 
     - name: Authenticate Ngrok
       env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}  
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
 
     - name: Enable RDP
@@ -32,18 +32,18 @@ jobs:
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-    - name: Validate ngrok  
+    - name: Validate ngrok
       run: .\ngrok\ngrok -version
 
     - name: Check RDP Port
-      run: Test-Connection localhost -Port 3389
+      run: Test-NetConnection -ComputerName localhost -Port 3389
 
     - name: Start Tunnel
-      run: | 
-        .\ngrok\ngrok tcp 3389 --log=stdout
-        .\ngrok\ngrok tcp 3389 --log=stdout
-
-    - name: Keep Tunnel Alive  
       run: |
-       nohup .\ngrok\ngrok tcp 3389 &
-       sleep 86400
+        .\ngrok\ngrok tcp 3389 --log=stdout
+        .\ngrok\ngrok tcp 3389 --log=stdout
+    
+    - name: Keep Tunnel Alive
+      run: | 
+        nohup .\ngrok\ngrok tcp 3389 &
+        sleep 86400
