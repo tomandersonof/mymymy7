@@ -1,45 +1,37 @@
-name: CI
+name: Setup RDP 
 
-
-on: [push, workflow_dispatch]
-
+on: 
+  push:
+  schedule:
+    - cron: '0 */6 * * *' # restart every 6 hours
 
 jobs:
 
-  build:
-
-
+  ngrok:
     runs-on: windows-latest
-
-
+    
     steps:
+    - uses: actions/checkout@v2
 
-    - name: Download
+    - name: Download Ngrok
+      run: |
+        Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
 
-      run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
-
-    - name: Extract
-
+    - name: Extract Ngrok
       run: Expand-Archive ngrok.zip
 
-    - name: Auth
-
+    - name: Authenticate Ngrok
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}  
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
 
-      env:
+    - name: Enable Remote Desktop
+      run: | 
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop" 
 
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-
-    - name: Enable TS
-
-      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
-
-    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-
-    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-
-    - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+    - name: Allow NLA 
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
 
     - name: Create Tunnel
-
-      run: .\ngrok\ngrok.exe tcp 3389
+      run: .\ngrok\ngrok.exe tcp -keepalive 10 3389
