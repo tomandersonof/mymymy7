@@ -1,5 +1,5 @@
-on:
-  workflow_dispatch:
+on: 
+  workflow_dispatch:   
 
 jobs:
 
@@ -11,24 +11,32 @@ jobs:
 
     - uses: actions/checkout@v2
 
-    - name: Download Ngrok  
+    - name: Download Ngrok
       run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
 
     - name: Extract Ngrok
       run: Expand-Archive ngrok.zip
 
-    - name: Authenticate Ngrok   
+    - name: Authenticate Ngrok  
       env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}  
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
 
-    - name: Enable Remote Desktop
-      # steps to enable RDP 
-
-    - name: Start Tunnel  
-      run: .\ngrok\ngrok.exe tcp 3389 -keepalive 10
+    - name: Enable Remote Desktop  
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
         
-    - name: Keep Tunnel Alive
+    - name: Allow NLA
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1 
+
+    - name: Start Tunnel
+      run: .\ngrok\ngrok.exe tcp 3389 -keepalive 10
+
+    - name: Print Public URL  
+      run: curl http://localhost:4040/api/tunnels | ConvertFrom-Json
+
+    - name: Keep Tunnel Alive  
       run: |
         nohup .\ngrok\ngrok.exe tcp 3389 -keepalive 10 &
         sleep 86400
