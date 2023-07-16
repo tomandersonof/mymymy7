@@ -1,5 +1,7 @@
-on: 
-  workflow_dispatch:   
+name: Setup Ngrok Tunnel
+
+on:
+  workflow_dispatch:
 
 jobs:
 
@@ -8,7 +10,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-
+    
     - uses: actions/checkout@v2
 
     - name: Download Ngrok
@@ -17,26 +19,18 @@ jobs:
     - name: Extract Ngrok
       run: Expand-Archive ngrok.zip
 
-    - name: Authenticate Ngrok  
+    - name: Authenticate Ngrok
       env:
         NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}  
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
 
-    - name: Enable Remote Desktop  
-      run: |
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        
-    - name: Allow NLA
-      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1 
+    - name: Enable Remote Desktop
+      # Commands to enable RDP
 
     - name: Start Tunnel
       run: .\ngrok\ngrok.exe tcp 3389 -keepalive 10
 
-    - name: Print Public URL  
-      run: curl http://localhost:4040/api/tunnels | ConvertFrom-Json
-
-    - name: Keep Tunnel Alive  
+    - name: Keep Tunnel Alive
       run: |
         nohup .\ngrok\ngrok.exe tcp 3389 -keepalive 10 &
         sleep 86400
