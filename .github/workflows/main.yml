@@ -1,21 +1,14 @@
-name: Ngrok and SSH RDP Connection
+name: Ngrok and SSH Connection
 
 on:
+  push:
   workflow_dispatch:
 
 jobs:
-
-  ngrok_ssh_rdp:
-
+  build:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v2
-
-    - name: Set Credentials  
-      run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
-
     - name: Download Ngrok
       run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
 
@@ -23,23 +16,25 @@ jobs:
       run: Expand-Archive ngrok.zip
 
     - name: Authenticate Ngrok
+      run: .\ngrok\ngrok.exe authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
       env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}  
-      run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
 
-    - name: Enable RDP
+    - name: Enable Remote Desktop
       run: |
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
-    - name: Validate Ngrok
-      run: .\ngrok\ngrok -version
+    - name: Create Ngrok Tunnel
+      run: .\ngrok\ngrok.exe tcp 3389
 
-    - name: Start Ngrok Tunnel
-      run: .\ngrok\ngrok tcp 3389 --log=stdout &
+    - name: Wait for Ngrok to Start
+      run: Start-Sleep -Seconds 10
+
+    - name: Get Ngrok URL
       id: ngrok
-
-    - name: Wait for Ngrok URL
       run: |
         $ngrokStatus = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels" -Method Get
         $ngrokURL = $ngrokStatus.tunnels[0].public_url
@@ -47,12 +42,6 @@ jobs:
         echo "::set-output name=ngrok_url::$ngrokURL"
       shell: pwsh
 
-    - name: Establish SSH RDP Connection
+    - name: Establish SSH Connection
       run: |
-        ssh -L 33389:localhost:3389 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 22 runneradmin@${{ steps.ngrok.outputs.ngrok_url }} -N
-        if ($LastExitCode -eq 0) { 
-          echo "SSH connection successful"
-        } else {
-          echo "SSH connection failed"
-          exit 1
-        }
+        ssh -L 33389:localhost:3389 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null runneradmin@${{ steps.ngrok.outputs.ngrok_url }} -p 22 -N
