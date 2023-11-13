@@ -1,56 +1,45 @@
-name: Ngrok and SSH Connection
+name: CI
 
-on:
-  push:
-  workflow_dispatch:
+
+on: [push, workflow_dispatch]
+
 
 jobs:
+
   build:
+
+
     runs-on: windows-latest
 
+
     steps:
-    - name: Download Ngrok
+
+    - name: Download
+
       run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
 
-    - name: Extract Ngrok
+    - name: Extract
+
       run: Expand-Archive ngrok.zip
 
-    - name: Authenticate Ngrok
-      run: .\ngrok\ngrok.exe authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+    - name: Auth
+
+      run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
+
       env:
+
         NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
 
-    - name: Enable Remote Desktop
-      run: |
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+    - name: Enable TS
 
-    - name: Start Ngrok Tunnel
-      run: start /B .\ngrok\ngrok.exe tcp 3389
-      shell: cmd
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
 
-    - name: Wait for Ngrok to Start
-      run: Start-Sleep -Seconds 10
+    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-    - name: Get Ngrok URL
-      id: ngrok
-      run: |
-        try {
-          $ngrokStatus = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels" -Method Get
-          $ngrokURL = $ngrokStatus.tunnels[0].public_url
-          $ngrokHostname = [System.Uri]::new($ngrokURL).Host
-          echo "Ngrok URL: $ngrokURL"
-          echo "Ngrok Hostname: $ngrokHostname"
-          echo "::set-output name=ngrok_url::$ngrokURL"
-          echo "::set-output name=ngrok_hostname::$ngrokHostname"
-        } catch {
-          echo "Error retrieving Ngrok URL."
-          exit 1
-        }
-      shell: pwsh
+    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
 
-    - name: Establish SSH Connection
-      run: |
-        ssh -L 33389:localhost:3389 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null runneradmin@${{ steps.ngrok.outputs.ngrok_hostname }} -p 22 -N
+    - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+
+    - name: Create Tunnel
+
+      run: .\ngrok\ngrok.exe tcp 3389
