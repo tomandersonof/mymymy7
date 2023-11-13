@@ -37,13 +37,18 @@ jobs:
     - name: Get Ngrok URL
       id: ngrok
       run: |
-        $ngrokStatus = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels" -Method Get
-        $ngrokURL = $ngrokStatus.tunnels[0].public_url
-        echo "Ngrok URL: $ngrokURL"
-        echo "::set-output name=ngrok_url::$ngrokURL"
-        $ngrokHostname = [System.Uri]::new($ngrokURL).Host
-        echo "Ngrok Hostname: $ngrokHostname"
-        echo "::set-output name=ngrok_hostname::$ngrokHostname"
+        try {
+          $ngrokStatus = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels" -Method Get
+          $ngrokURL = $ngrokStatus.tunnels[0].public_url
+          $ngrokHostname = [System.Uri]::new($ngrokURL).Host
+          echo "Ngrok URL: $ngrokURL"
+          echo "Ngrok Hostname: $ngrokHostname"
+          echo "::set-output name=ngrok_url::$ngrokURL"
+          echo "::set-output name=ngrok_hostname::$ngrokHostname"
+        } catch {
+          echo "Error retrieving Ngrok URL."
+          exit 1
+        }
       shell: pwsh
 
     - name: Establish SSH Connection
