@@ -28,8 +28,8 @@ jobs:
         Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
     - name: Start Ngrok Tunnel
-      run: .\ngrok\ngrok.exe tcp 3389 > ngrok.log 2>&1 &
-      background: true
+      run: start /B .\ngrok\ngrok.exe tcp 3389
+      shell: cmd
 
     - name: Wait for Ngrok to Start
       run: Start-Sleep -Seconds 10
