@@ -68,6 +68,14 @@ jobs:
 
       run: .\ngrok\ngrok.exe update
 
+    - name: Update
+
+
+
+
+
+      run: .\ngrok\ngrok.exe --version
+
 
 
     - name: Enable TS
